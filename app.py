@@ -304,7 +304,7 @@ def render_dashboard():
                     
                     <!-- SEARCH / FILTER -->
                     <div class="mb-4">
-                        <input type="text" id="ticket-search" oninput="filterTickets()" placeholder="Nach bestimmter Zahl filtern..." class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-sm text-gray-300 focus:outline-none focus:border-indigo-500">
+                        <input type="text" id="ticket-search" oninput="filterTickets()" placeholder="Nach bestimmter Zahl filtern..." class="w-full bg-gray-950 border border-gray-800 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
                     </div>
 
                     <!-- TICKETS LIST CONTAINER -->
@@ -361,7 +361,7 @@ def render_dashboard():
 
                 item.innerHTML = `
                     <span class="text-gray-600 font-mono text-xs">#${String(idx+1).padStart(3, '0')}</span>
-                    \${ballsHtml}
+                    ${ballsHtml}
                 `;
                 container.appendChild(item);
             });
@@ -397,4 +397,58 @@ def render_dashboard():
                 });
                 const data = await res.json();
                 
-                document.getElementById('res-invest').innerText = data.investment.toLocaleString('de-DE', {style: 'curre
+                document.getElementById('res-invest').innerText = data.investment.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'});
+                document.getElementById('res-returns').innerText = data.returns.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'});
+                document.getElementById('res-profit').innerText = data.profit.toLocaleString('de-DE', {style: 'currency', currency: 'EUR'});
+                document.getElementById('res-roi').innerText = data.roi.toFixed(2) + " %";
+                
+                const distHtml = Object.entries(data.distribution).map(([key, val]) => 
+                    `<div>${key}: ${val}x</div>`
+                ).join('');
+                document.getElementById('res-dist').innerHTML = distHtml;
+                resultsDiv.classList.remove('hidden');
+            } catch (err) {
+                console.error("Backtest Fehler: ", err);
+                alert("Fehler beim Backtest: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Backtest ausführen";
+            }
+        }
+
+        async function checkLiveDrawing() {
+            const inputs = document.querySelectorAll('.live-input');
+            const numbers = Array.from(inputs).map(i => parseInt(i.value, 10));
+            
+            try {
+                const res = await fetch('/api/v1/live-check', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ numbers })
+                });
+                
+                if(!res.ok) {
+                    throw new Error("Ungültige Eingabe");
+                }
+                
+                const data = await res.json();
+                const resultsDiv = document.getElementById('live-results');
+                document.getElementById('live-summary').innerText = data.total_winning_tickets + " Gewinn-Tipps gefunden!";
+                
+                const detailsHtml = data.details.map(win => 
+                    `<div class="p-1 bg-gray-800/50 rounded">Ticket: ${win.numbers.join(', ')} | ${win.hits} Treffer: ${win.win_eur} €</div>`
+                ).join('');
+                document.getElementById('live-details').innerHTML = detailsHtml || '<p class="text-gray-600">Keine Treffer ≥3</p>';
+                resultsDiv.classList.remove('hidden');
+            } catch (err) {
+                console.error("Live Check Fehler: ", err);
+                alert("Fehler: " + err.message);
+            }
+        }
+
+        // Load metrics on page ready
+        document.addEventListener('DOMContentLoaded', loadMetrics);
+    </script>
+</body>
+</html>"""
+    return html_content
